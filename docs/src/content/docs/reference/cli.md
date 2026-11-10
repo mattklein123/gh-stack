@@ -451,6 +451,13 @@ Date-preserving rebases explicitly use Git's merge backend so the setting persis
 
 Fetches the latest changes from `origin`, then ensures each branch in the stack has the tip of the previous layer in its commit history. Rebases branches in order from trunk upward.
 
+When a branch changes a submodule pin, `rebase` and `sync` update initialized
+submodule checkouts that were clean and matched their pin before the Git
+operation. This also applies when switching branches, continuing a rebase, or
+restoring branches after an abort. Uninitialized submodules stay uninitialized;
+local edits, untracked files, and commits that differ from the recorded pin are
+not overwritten. Commit or stash those changes before starting the operation.
+
 If a branch's PR has been merged, the rebase automatically switches to `--onto` mode to correctly replay commits on top of the merge target.
 
 Merged PR heads are cached separately from local branch tips, so a stale or deleted

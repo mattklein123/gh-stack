@@ -131,19 +131,27 @@ func (d *defaultOps) runRebaseCommand(args []string, opts RebaseOpts) error {
 	if inProgress {
 		return &RebaseStartError{Err: errors.New("a rebase is already in progress")}
 	}
-	err = d.runSilent(args...)
-	if err == nil {
-		return nil
-	}
-	err = d.tryAutoResolveRebase(err, opts)
-	if err == nil {
-		return nil
-	}
-	inProgress, stateErr := d.rebaseInProgress()
-	if stateErr != nil {
-		return errors.Join(err, stateErr)
-	}
-	if !inProgress {
+	started := false
+	err = d.withSubmoduleUpdate(func() error {
+		started = true
+		err := d.runSilent(args...)
+		if err == nil {
+			return nil
+		}
+		err = d.tryAutoResolveRebase(err, opts)
+		if err == nil {
+			return nil
+		}
+		inProgress, stateErr := d.rebaseInProgress()
+		if stateErr != nil {
+			return errors.Join(err, stateErr)
+		}
+		if !inProgress {
+			return &RebaseStartError{Err: err}
+		}
+		return err
+	})
+	if !started {
 		return &RebaseStartError{Err: err}
 	}
 	return err
@@ -153,7 +161,7 @@ func rebaseArgs(opts RebaseOpts) []string {
 	// The cascade owns its ref range and must never stash another worktree.
 	// Detached maintenance can race the next commit's rerere lock.
 	// Use configuration overrides rather than flags unavailable in Git 2.36.
-	args := []string{"-c", "rebase.updateRefs=false", "-c", "rebase.autoStash=false", "-c", "maintenance.auto=false", "rebase"}
+	args := []string{"-c", "rebase.updateRefs=false", "-c", "rebase.autoStash=false", "-c", "maintenance.auto=false", "-c", "submodule.recurse=false", "rebase"}
 	if opts.CommitterDateIsAuthorDate {
 		// The apply backend loses this option after a conflict. The merge
 		// backend persists it for continuation and rerere auto-continuation.

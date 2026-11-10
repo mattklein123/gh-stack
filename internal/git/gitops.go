@@ -166,7 +166,7 @@ func (d *defaultOps) BranchExists(name string) (bool, error) {
 }
 
 func (d *defaultOps) CheckoutBranch(name string) error {
-	return d.runSilent("checkout", name)
+	return d.runWithSubmoduleUpdate("checkout", name)
 }
 
 func (d *defaultOps) Fetch(remote string) error {
@@ -407,15 +407,17 @@ func (d *defaultOps) RebaseOnto(newBase, oldBase, branch string, opts RebaseOpts
 }
 
 func (d *defaultOps) RebaseContinue(opts RebaseOpts) error {
-	err := d.rebaseContinueOnce(opts)
-	if err == nil {
-		return nil
-	}
-	return d.tryAutoResolveRebase(err, opts)
+	return d.withSubmoduleUpdate(func() error {
+		err := d.rebaseContinueOnce(opts)
+		if err == nil {
+			return nil
+		}
+		return d.tryAutoResolveRebase(err, opts)
+	})
 }
 
 func (d *defaultOps) RebaseAbort() error {
-	return d.runSilent(append(rebaseArgs(RebaseOpts{}), "--abort")...)
+	return d.runWithSubmoduleUpdate(append(rebaseArgs(RebaseOpts{}), "--abort")...)
 }
 
 func (d *defaultOps) IsRebaseInProgress() (bool, error) {
@@ -719,7 +721,7 @@ func (d *defaultOps) DeleteTrackingRef(remote, branch string) error {
 }
 
 func (d *defaultOps) ResetHard(ref string) error {
-	return d.runSilent("reset", "--hard", ref)
+	return d.runWithSubmoduleUpdate("reset", "--hard", ref)
 }
 
 func (d *defaultOps) SetUpstreamTracking(branch, remote string) error {
@@ -731,7 +733,7 @@ func (d *defaultOps) UpstreamRemote(branch string) (string, error) {
 }
 
 func (d *defaultOps) MergeFF(target string) error {
-	return d.runSilent("-c", "merge.autoStash=false", "merge", "--ff-only", target)
+	return d.runWithSubmoduleUpdate("-c", "merge.autoStash=false", "merge", "--ff-only", target)
 }
 
 func (d *defaultOps) UpdateBranchRef(branch, sha string) error {
